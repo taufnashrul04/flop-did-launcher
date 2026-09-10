@@ -50,10 +50,12 @@ async function generateKeypair() {
 
 // ---- x25519 mailbox (browser-native, independent of the ed25519 seed) --------------
 async function generateMailbox() {
+  // `deriveBits` is a real, non-empty usage so WebCrypto will create the key; we only
+  // export the public half for the mailbox field.
   const kp = await crypto.subtle.generateKey(
     { name: "X25519" },
     true,
-    []
+    ["deriveBits"]
   );
   const jwkX = await crypto.subtle.exportKey("jwk", kp.publicKey);
   return b64urlFromJwkX(jwkX.x);
