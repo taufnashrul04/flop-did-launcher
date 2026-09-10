@@ -25,6 +25,13 @@ function b64urlFromJwkX(x) {
   // JWK 'x' is already unpadded base64url.
   return x;
 }
+function b64urlToBytes(b64) {
+  // JWK 'x'/'y' are unpadded base64url -> decode to raw bytes.
+  const b = b64.replace(/-/g, "+").replace(/_/g, "/") +
+    ("===").slice((b64.length + 3) % 4);
+  const bin = atob(b);
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
 function hex2bytes(hex) { return new Uint8Array(hex.match(/../g).map(h => parseInt(h, 16))); }
 
 // RFC 8410 DER-wrapped Ed25519 seed so crypto.subtle can import it.
@@ -43,7 +50,7 @@ async function generateKeypair() {
     { name: "Ed25519" }, true, ["sign"]
   );
   const pubJwk = await crypto.subtle.exportKey("jwk", priv);
-  const pub = hex2bytes(pubJwk.x); // raw 32-byte ed25519 public key
+  const pub = b64urlToBytes(pubJwk.x); // raw 32-byte ed25519 public key (JWK x is base64url)
   const did = "did:key:" + b58encode(new Uint8Array([0xed, 0x01, ...pub]));
   return { seed, priv, did };
 }
