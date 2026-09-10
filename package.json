@@ -1,0 +1,13 @@
+{
+  "name": "flop-did-launcher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "On-browser FLOP DID launcher. Generates an Ed25519 did:key entirely client-side, shows a save-once seed, and publishes the signed identity note through a serverless proxy — the private key never leaves the browser.",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'static; no build step'"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

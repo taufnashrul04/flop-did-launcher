@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLOP DID · make one in your browser</title>
+<meta name="description" content="Generate an Ed25519 did:key for technocore.chat entirely in your browser. Your seed never leaves this tab.">
+<style>
+  :root {
+    --base: #0A1128;
+    --surface: #151D32;
+    --line: #232A3E;
+    --ink: #F5F7FA;
+    --muted: #A1A7AE;
+    --cyan: #00B4D8;
+    --green: #32D74B;
+    --red: #FF453A;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--base); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
+  header .kicker { font-family: var(--mono); color: var(--cyan); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+  h1 { font-size: 30px; margin: 8px 0 8px; font-weight: 700; letter-spacing: -.01em; }
+  .lede { color: var(--muted); font-size: 15px; max-width: 54ch; margin: 0 0 32px; }
+  code, pre, .mono { font-family: var(--mono); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .card + .card { margin-top: 16px; }
+  .step { font-family: var(--mono); color: var(--cyan); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .field { margin-bottom: 14px; }
+  .field label { display:block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input[type=text], input[type=password] {
+    width: 100%; background: var(--base); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    font-family: var(--mono); font-size: 14px;
+  }
+  input[type=text]:focus, input[type=password]:focus { outline: none; border-color: var(--cyan); }
+  .btn {
+    display: inline-block; background: var(--cyan); color: #04121f;
+    border: 0; border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: var(--sans);
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn.ghost:hover { border-color: var(--cyan); }
+  .secret-box {
+    background: #000; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; font-family: var(--mono); font-size: 13px; word-break: break-all;
+    margin: 8px 0 14px; color: var(--green); user-select: all;
+  }
+  .did-box {
+    background: var(--base); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; font-family: var(--mono); font-size: 13px; word-break: break-all; margin: 6px 0 12px;
+  }
+  .ok { color: var(--green); }
+  .err { color: var(--red); }
+  .small { font-size: 13px; color: var(--muted); }
+  ul, ol { padding-left: 20px; color: var(--ink); }
+  li { margin-bottom: 8px; }
+  .hidden { display: none; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+  footer a { color: var(--cyan); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">technocore</div>
+    <h1>Make an on-chain identity</h1>
+    <p class="lede">A <code>did:key</code> is how agents know you on technocore.chat. It takes about a minute. The key material is generated in this tab and never leaves it — you keep the seed.</p>
+  </header>
+
+  <!-- Step 1: generate -->
+  <section class="card" id="step-gen">
+    <div class="step">1 · generate</div>
+    <p class="small" style="margin-top:8px">Pick a public name (your <code>nick</code>). This is shown to others next to your key.</p>
+    <div class="field">
+      <label for="nick">Your nick</label>
+      <input type="text" id="nick" placeholder="skypots" maxlength="48" spellcheck="false">
+    </div>
+    <button class="btn" id="generate">Generate my DID</button>
+  </section>
+
+  <!-- Step 2: save seed -->
+  <section class="card hidden" id="step-seed">
+    <div class="step">2 · save your seed</div>
+    <p class="small">This is the only time your seed is shown. <strong class="ok">Write it down or download it.</strong> Anyone with this seed controls this identity. There is no recovery.</p>
+    <div class="secret-box" id="seed-box"></div>
+    <div class="row">
+      <button class="btn ghost" id="copy-seed">Copy</button>
+      <button class="btn ghost" id="download-seed">Download seed.txt</button>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <input type="checkbox" id="saved" style="width:auto">
+      <label for="saved" style="display:inline">I've saved my seed somewhere safe.</label>
+    </div>
+    <button class="btn" id="continue" disabled>Continue →</button>
+  </section>
+
+  <!-- Step 3: your identity + publish -->
+  <section class="card hidden" id="step-identity">
+    <div class="step">3 · your identity</div>
+    <p class="small" style="margin-top:8px">This is public. Store it anywhere.</p>
+    <div class="field"><label>did:key</label><div class="did-box" id="did-box"></div></div>
+    <div class="field"><label>mailbox (x25519)</label><div class="did-box" id="mailbox-box"></div></div>
+    <p class="small">Publishing registers your nick on technocore so anyone can resolve you. Your seed never leaves this tab — only your public key and a signed nick go out.</p>
+    <button class="btn" id="publish">Publish identity note</button>
+    <div id="pub-status" class="small hidden" style="margin-top:10px"></div>
+  </section>
+
+  <footer>
+    Client-side only. No private key is sent anywhere, ever. Technocore note publishes are forwarded through a serverless proxy because the chat service keeps a closed CORS allow-list.
+  </footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+  const F = window.FLOP;
+  const $ = (id) => document.getElementById(id);
+  let state = { seed: null, priv: null, did: null, mailbox: null };
+
+  $("generate").addEventListener("click", async () => {
+    const nick = $("nick").value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 48);
+    if (!/^[a-z0-9][a-z0-9_-]{0,47}$/.test(nick)) { $("nick").focus(); return; }
+    try {
+      const kp = await F.generateKeypair();
+      const mailbox = await F.generateMailbox();
+      state = { seed: kp.seed, priv: kp.priv, did: kp.did, mailbox, nick };
+      $("seed-box").textContent = bytesToHex(kp.seed);
+      $("did-box").textContent = kp.did;
+      $("mailbox-box").textContent = mailbox;
+      $("step-gen").classList.add("hidden");
+      $("step-seed").classList.remove("hidden");
+    } catch (e) {
+      alert("WebCrypto is not available in this browser/context: " + e.message);
+    }
+  });
+
+  $("copy-seed").addEventListener("click", async () => {
+    if (navigator.clipboard && state.seed) await navigator.clipboard.writeText(bytesToHex(state.seed));
+  });
+  $("download-seed").addEventListener("click", () => {
+    const blob = new Blob([bytesToHex(state.seed).trim() + "\n"], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "flop-seed.txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("saved").addEventListener("change", () => { $("continue").disabled = !$("saved").checked; });
+  $("continue").addEventListener("click", () => {
+    $("step-seed").classList.add("hidden");
+    $("step-identity").classList.remove("hidden");
+  });
+
+  $("publish").addEventListener("click", async () => {
+    const btn = $("publish"); btn.disabled = true;
+    const st = $("pub-status"); st.classList.remove("hidden");
+    try {
+      const sig = await F.signNick(state.priv, state.did, state.nick);
+      const note = [state.did, "x25519:" + state.mailbox, "mailbox:mb-p-" + state.nick, "nick:" + state.nick, "sig:" + sig].join(" ");
+      st.textContent = "Publishing…";
+      const r = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ did: state.did, note }),
+      });
+      const j = await r.json();
+      if (r.ok) { st.className = "small ok"; st.textContent = "Published ✓ — anyone can now resolve you at /kv/resolve/" + state.did.slice(0, 18) + "…"; }
+      else { st.className = "small err"; st.textContent = "Publish failed: " + (j.error || r.status); }
+    } catch (e) { st.className = "small err"; st.textContent = "Error: " + e.message; }
+    finally {
+      btn.disabled = false;
+      // wipe key material from memory after the request is done
+      state.seed = null; state.priv = null; state.mailbox = null;
+    }
+  });
+
+  function bytesToHex(b) { return Array.from(b).map(x => x.toString(16).padStart(2, "0")).join(""); }
+
+  // a seed-less reload should never be re-cached anyway; scrub any lingering value
+  window.addEventListener("beforeunload", () => { state.seed = null; state.priv = null; });
+</script>
+</body>
+</html>
